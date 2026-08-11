@@ -38,6 +38,11 @@ const (
 
 	//nolint:gosec // Does not contain hard coded credentials.
 	defaultCredentialsSecretName = "nutanix-csi-credentials"
+
+	// defaultVolumeSnapshotClassName matches the name the upstream Nutanix CSI
+	// Helm chart uses (values key volumeSnapshotClassName), so consumers that
+	// reference "nutanix-snapshot-class" keep working.
+	defaultVolumeSnapshotClassName = "nutanix-snapshot-class"
 )
 
 var DefaultStorageClassParameters = map[string]string{
@@ -49,6 +54,14 @@ var DefaultStorageClassParameters = map[string]string{
 	"csi.storage.k8s.io/node-publish-secret-namespace":      defaultHelmReleaseNamespace,
 	"csi.storage.k8s.io/controller-expand-secret-name":      defaultCredentialsSecretName,
 	"csi.storage.k8s.io/controller-expand-secret-namespace": defaultHelmReleaseNamespace,
+}
+
+// DefaultVolumeSnapshotClassParameters mirror the parameters the upstream
+// Nutanix CSI Helm chart sets on the VolumeSnapshotClass.
+var DefaultVolumeSnapshotClassParameters = map[string]string{
+	"storageType": "NutanixVolumes",
+	"csi.storage.k8s.io/snapshotter-secret-name":      defaultCredentialsSecretName,
+	"csi.storage.k8s.io/snapshotter-secret-namespace": defaultHelmReleaseNamespace,
 }
 
 type Config struct {
@@ -197,6 +210,26 @@ func (n *NutanixCSI) Apply(
 	if err != nil {
 		return fmt.Errorf("error creating StorageClasses for the Nutanix CSI driver: %w", err)
 	}
+
+	// Create the VolumeSnapshotClass on the remote cluster. The upstream Nutanix
+	// CSI Helm chart only emits it when volumeClass is enabled, which CAREN does
+	// not set, so create it explicitly to guarantee it exists on every managed
+	// cluster (including the self-managed management cluster).
+	err = csiutils.CreateVolumeSnapshotClassOnRemote(
+		ctx,
+		n.client,
+		cluster,
+		defaultVolumeSnapshotClassName,
+		string(v1alpha1.NutanixProvisioner),
+		DefaultVolumeSnapshotClassParameters,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"error creating VolumeSnapshotClass for the Nutanix CSI driver: %w",
+			err,
+		)
+	}
+
 	return nil
 }
 
