@@ -200,8 +200,32 @@ func newClient(
 		GetCurrentLoggedInUserFunc: v3c.V3.GetCurrentLoggedInUser,
 		GetImageByIdFunc:           v4c.ImagesApiInstance.GetImageById,
 		ListImagesFunc:             v4c.ImagesApiInstance.ListImages,
-		GetClusterByIdFunc:         v4c.ClustersApiInstance.GetClusterById,
-		ListClustersFunc:           v4c.ClustersApiInstance.ListClusters,
+		GetClusterByIdFunc: func(
+			uuid *string,
+			args ...map[string]interface{},
+		) (*clustermgmtv4.GetClusterApiResponse, error) {
+			return v4c.ClustersApiInstance.GetClusterById(uuid, nil, args...)
+		},
+		ListClustersFunc: func(
+			page_ *int,
+			limit_ *int,
+			filter_ *string,
+			orderby_ *string,
+			apply_ *string,
+			select_ *string,
+			args ...map[string]interface{},
+		) (*clustermgmtv4.ListClustersApiResponse, error) {
+			return v4c.ClustersApiInstance.ListClusters(
+				page_,
+				limit_,
+				filter_,
+				orderby_,
+				apply_,
+				nil,
+				select_,
+				args...,
+			)
+		},
 		ListStorageContainersFunc:  v4c.StorageContainerAPI.ListStorageContainers,
 		GetSubnetByIdFunc:          v4c.SubnetsApiInstance.GetSubnetById,
 		ListSubnetsFunc:            v4c.SubnetsApiInstance.ListSubnets,
